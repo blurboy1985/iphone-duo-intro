@@ -160,3 +160,7 @@ is world-readable; per-site access control is Enterprise Cloud only.
 **Note for the Gmail feature.** Pages serves over https, so Google Identity Services will run there,
 unlike `file://`. Connecting needs `https://blurboy1985.github.io` added to the OAuth client's
 authorised JavaScript origins. The sample inbox needs nothing.
+
+**Live 2026-09-12.** Run 4 of the workflow deployed successfully once Pages was switched on by hand.
+Site: https://blurboy1985.github.io/iphone-duo-intro/ — `README.md` carries the link, the Gmail
+setup steps and the third-party notices for the inlined Three.js and Instrument Sans.
