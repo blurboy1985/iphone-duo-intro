@@ -205,6 +205,18 @@
     font-size: 13px; line-height: 1.45; color: #FF9E8A;
   }
   .sheet-error[hidden] { display: none; }
+  .sheet-origin {
+    margin: 0 0 14px; padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, .12); border-radius: 10px;
+    font-size: 12.5px; line-height: 1.5; color: var(--ink-dim);
+  }
+  .sheet-origin code {
+    display: block; margin: 6px 0 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px; color: var(--ink); word-break: break-all;
+  }
+  .sheet-origin button { padding: 0; font-size: 12.5px; text-decoration: underline; text-underline-offset: 3px; }
+  .sheet-origin.bad code { color: #FF9E8A; }
   .sheet-row { display: flex; gap: 20px; margin-top: 16px; }
   .sheet-row button[type="submit"] { font-weight: 560; }
   #gcancel, #gforget { color: var(--ink-dim); }
@@ -262,6 +274,11 @@
       <p>Paste a Google OAuth <b>Web application</b> client ID from a project with the Gmail API enabled, and list this page’s origin under its authorised JavaScript origins.</p>
       <p>Access is read-only, and the token is kept in memory for this tab alone. Only the client ID is remembered.</p>
       <p class="sheet-error" id="gerror" hidden role="alert"></p>
+      <div class="sheet-origin" id="goriginbox">
+        <span>This page's origin, which must be listed under <b>Authorized JavaScript origins</b>:</span>
+        <code id="gorigin"></code>
+        <button type="button" id="gcopy">Copy</button>
+      </div>
       <label for="gid">Client ID</label>
       <input id="gid" type="text" autocomplete="off" spellcheck="false" placeholder="…apps.googleusercontent.com" required>
       <div class="sheet-row">
@@ -1421,8 +1438,9 @@ function requestToken(clientId, interactive) {
       },
       error_callback: (err) => {
         setMailStatus('Sign-in didn’t complete' + (err && err.type ? ` (${err.type}). ` : '. ')
-          + 'If Google showed “401: invalid_client” the ID is not a real web client; if it showed an '
-          + 'origin error, add this page’s origin in Google Cloud. Use Change client ID to retry.', true);
+          + 'If Google showed “401: invalid_client” the ID is not a real web client. If it showed '
+          + `“400: origin_mismatch”, this exact origin must be listed on that same client: ${location.origin}. `
+          + 'Use Change client ID to see it again.', true);
       },
     });
     client.requestAccessToken({ prompt: interactive ? 'consent' : '' });
@@ -1564,8 +1582,22 @@ function setMailMode(on) {
   syncMailDom();
 }
 
+// The origin is read from the page, so it is exactly the string Google will be sent
+function showOrigin() {
+  const box = $('goriginbox'), code = $('gorigin');
+  const origin = location.origin;
+  const unusable = !origin || origin === 'null' || location.protocol === 'file:';
+  code.textContent = unusable ? 'not available on a file:// page' : origin;
+  box.classList.toggle('bad', unusable);
+  box.firstElementChild.textContent = unusable
+    ? 'Gmail can’t be connected from a file:// copy — Google refuses to run sign-in on it. Open the page over http or https instead.'
+    : 'This page’s origin, which must be listed under Authorized JavaScript origins:';
+  $('gcopy').hidden = unusable;
+}
+
 function openClientSheet() {
   sheet.hidden = false;
+  showOrigin();
   showSheetError('');
   sheetInput.value = store.get(CLIENT_ID_KEY);
   $('gforget').hidden = !store.get(CLIENT_ID_KEY);
@@ -1588,6 +1620,19 @@ function initMail() {
   mailDisconnectBtn.addEventListener('click', disconnectGmail);
   mailClientIdBtn.addEventListener('click', openClientSheet);
   $('gforget').addEventListener('click', forgetClientId);
+  $('gcopy').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(location.origin);
+      $('gcopy').textContent = 'Copied';
+    } catch (e) {
+      const r = document.createRange();        // clipboard blocked: select it so it can be copied by hand
+      r.selectNodeContents($('gorigin'));
+      getSelection().removeAllRanges();
+      getSelection().addRange(r);
+      $('gcopy').textContent = 'Selected — press Ctrl/Cmd+C';
+    }
+    setTimeout(() => { $('gcopy').textContent = 'Copy'; }, 2500);
+  });
 
   sheetForm.addEventListener('submit', (e) => {
     e.preventDefault();
