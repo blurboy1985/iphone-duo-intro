@@ -164,3 +164,18 @@ authorised JavaScript origins. The sample inbox needs nothing.
 **Live 2026-09-12.** Run 4 of the workflow deployed successfully once Pages was switched on by hand.
 Site: https://blurboy1985.github.io/iphone-duo-intro/ — `README.md` carries the link, the Gmail
 setup steps and the third-party notices for the inlined Three.js and Instrument Sans.
+
+## Client ID reset (2026-09-12)
+**Bug:** `connectGmail()` read the saved client ID and only opened the entry sheet when there was
+none, so a mistyped ID was stuck — no way to change it from the UI, and Disconnect kept it too.
+
+**Fix:** a **Change client ID** button in the mail bar, shown whenever an ID is stored; it opens the
+sheet with the value selected for overtyping. A **Forget saved ID** button inside the sheet clears
+storage. `?gmail_client_id=` now overwrites the stored value, so the URL is a reset as well. The
+sign-in failure messages name the button, since a wrong ID and a missing authorised origin both
+surface as a generic GIS error.
+
+**Verify:** over http (localStorage needs a real origin) — seed a wrong ID, confirm the button
+appears, the sheet prefills and selects it, Forget clears storage and re-hides the button, Connect
+then reopens the sheet, submitting saves the new ID, and a URL param replaces a stored one. Full
+mail and intro regressions re-run clean.

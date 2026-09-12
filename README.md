@@ -69,6 +69,15 @@ no Google verification review is needed.
 Google will warn that the app is unverified. That is expected for your own
 client: **Advanced → Go to … (unsafe)**.
 
+### Pasted the wrong client ID?
+
+The ID is remembered, so there are three ways to change it:
+
+- **Change client ID** in the mail bar — appears as soon as an ID is saved. It
+  opens the box with the current value selected, ready to be typed over.
+- **Forget saved ID** inside that box clears it entirely.
+- Loading the page with `?gmail_client_id=…` replaces whatever is saved.
+
 You will see today's inbox from local midnight, up to 15 messages, newest first.
 
 ### What is stored
