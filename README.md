@@ -69,6 +69,34 @@ no Google verification review is needed.
 Google will warn that the app is unverified. That is expected for your own
 client: **Advanced → Go to … (unsafe)**.
 
+### Two errors you may hit, and what each one means
+
+**`Error 401: invalid_client`** — Google has no client with that ID. The ID itself is
+wrong: a truncated paste, or the client secret, the API key or the project
+number copied instead. It is not an origin problem; the request never got that
+far. The page now checks the shape before sending you to Google and says which
+of these it looks like.
+
+**`Error 400: origin_mismatch`** — the ID is good and Google found it, but the
+address you are viewing from is not registered on that client. Fix it in
+**Credentials → your OAuth 2.0 Client ID → Authorized JavaScript origins**:
+
+```
+https://blurboy1985.github.io
+```
+
+Three things go wrong here:
+
+- It must go under **Authorized JavaScript origins**, *not* Authorized redirect
+  URIs. This flow never uses a redirect URI.
+- **Origin only** — scheme and host. No `/iphone-duo-intro/`, no trailing slash.
+  The path is not part of an origin.
+- Google can take a few minutes to propagate the change. If it still fails
+  straight after saving, wait and retry before changing anything else.
+
+To run it from a local server as well, add that origin too, e.g.
+`http://localhost:8000`.
+
 ### Pasted the wrong client ID?
 
 The ID is remembered, so there are three ways to change it:

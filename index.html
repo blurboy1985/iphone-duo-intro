@@ -198,6 +198,13 @@
     border-radius: 10px; padding: 10px 12px;
   }
   .sheet-card input:focus-visible { outline: 2px solid #9CC4FF; outline-offset: 2px; }
+  .sheet-error {
+    margin: 0 0 12px; padding: 10px 12px;
+    border: 1px solid rgba(255, 158, 138, .35); border-radius: 10px;
+    background: rgba(255, 158, 138, .08);
+    font-size: 13px; line-height: 1.45; color: #FF9E8A;
+  }
+  .sheet-error[hidden] { display: none; }
   .sheet-row { display: flex; gap: 20px; margin-top: 16px; }
   .sheet-row button[type="submit"] { font-weight: 560; }
   #gcancel, #gforget { color: var(--ink-dim); }
@@ -254,6 +261,7 @@
       <h2>Connect Gmail</h2>
       <p>Paste a Google OAuth <b>Web application</b> client ID from a project with the Gmail API enabled, and list this page’s origin under its authorised JavaScript origins.</p>
       <p>Access is read-only, and the token is kept in memory for this tab alone. Only the client ID is remembered.</p>
+      <p class="sheet-error" id="gerror" hidden role="alert"></p>
       <label for="gid">Client ID</label>
       <input id="gid" type="text" autocomplete="off" spellcheck="false" placeholder="…apps.googleusercontent.com" required>
       <div class="sheet-row">
@@ -1413,7 +1421,8 @@ function requestToken(clientId, interactive) {
       },
       error_callback: (err) => {
         setMailStatus('Sign-in didn’t complete' + (err && err.type ? ` (${err.type}). ` : '. ')
-          + 'A wrong client ID or a missing origin does this — use Change client ID.', true);
+          + 'If Google showed “401: invalid_client” the ID is not a real web client; if it showed an '
+          + 'origin error, add this page’s origin in Google Cloud. Use Change client ID to retry.', true);
       },
     });
     client.requestAccessToken({ prompt: interactive ? 'consent' : '' });
@@ -1426,8 +1435,46 @@ function connectGmail() {
   if (fromUrl) store.set(CLIENT_ID_KEY, fromUrl);
   const saved = fromUrl || store.get(CLIENT_ID_KEY).trim();
   if (!saved) { openClientSheet(); return; }
+  const problem = clientIdProblem(saved);
+  if (problem) {                       // don't send anyone to Google's bare 401 page
+    openClientSheet();
+    showSheetError(problem);
+    return;
+  }
   setMailStatus('Opening Google sign-in…');
   requestToken(saved, !MAIL.account);
+}
+
+// A web client id looks like 123456789012-abc123.apps.googleusercontent.com
+const CLIENT_ID_SHAPE = /^\d+(-[A-Za-z0-9_-]+)?\.apps\.googleusercontent\.com$/;
+
+// Returns '' when the id looks usable, otherwise says what was pasted instead
+function clientIdProblem(id) {
+  if (!id) return 'Paste the client ID first.';
+  if (/^GOCSPX-/.test(id)) {
+    return 'That is a client secret, not a client ID. Nothing here needs your secret — '
+      + 'rotate it in Google Cloud, then paste the Client ID, which ends in .apps.googleusercontent.com.';
+  }
+  if (/^AIza/.test(id)) {
+    return 'That is an API key, not an OAuth client ID. Under Credentials, open the entry whose '
+      + 'type is OAuth 2.0 Client ID and copy that.';
+  }
+  if (/\s/.test(id)) return 'That contains a space, so part of another value was copied with it.';
+  if (!/\.apps\.googleusercontent\.com$/.test(id)) {
+    return 'A client ID ends in .apps.googleusercontent.com. Copy the whole value — '
+      + 'the copy button beside it in Google Cloud takes all of it.';
+  }
+  if (!CLIENT_ID_SHAPE.test(id)) {
+    return 'That does not look like a complete client ID. It should read like '
+      + '123456789012-abc123.apps.googleusercontent.com.';
+  }
+  return '';
+}
+
+function showSheetError(message) {
+  const box = $('gerror');
+  box.textContent = message;
+  box.hidden = !message;
 }
 
 function forgetClientId() {
@@ -1519,6 +1566,7 @@ function setMailMode(on) {
 
 function openClientSheet() {
   sheet.hidden = false;
+  showSheetError('');
   sheetInput.value = store.get(CLIENT_ID_KEY);
   $('gforget').hidden = !store.get(CLIENT_ID_KEY);
   sheetInput.focus();
@@ -1543,8 +1591,10 @@ function initMail() {
 
   sheetForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const id = sheetInput.value.trim();
-    if (!id) return;
+    const id = sheetInput.value.trim().replace(/^["'<]|[">']$/g, '');   // tolerate a quoted paste
+    const problem = clientIdProblem(id);
+    if (problem) { showSheetError(problem); sheetInput.focus(); return; }
+    showSheetError('');
     store.set(CLIENT_ID_KEY, id);
     sheet.hidden = true;
     setMailStatus('Opening Google sign-in…');
