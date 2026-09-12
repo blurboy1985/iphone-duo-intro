@@ -200,7 +200,8 @@
   .sheet-card input:focus-visible { outline: 2px solid #9CC4FF; outline-offset: 2px; }
   .sheet-row { display: flex; gap: 20px; margin-top: 16px; }
   .sheet-row button[type="submit"] { font-weight: 560; }
-  #gcancel { color: var(--ink-dim); }
+  #gcancel, #gforget { color: var(--ink-dim); }
+  #gforget { margin-left: auto; }
 
   @media (max-width: 640px) {
     .caption { bottom: 17vh; }
@@ -236,6 +237,7 @@
       <p id="mailstatus" role="status"></p>
       <button id="mailconnect" type="button">Connect Gmail</button>
       <button id="mailrefresh" type="button" hidden>Refresh</button>
+      <button id="mailclientid" type="button" hidden>Change client ID</button>
       <button id="maildisconnect" type="button" hidden>Disconnect</button>
     </div>
   </nav>
@@ -257,6 +259,7 @@
       <div class="sheet-row">
         <button type="submit">Continue</button>
         <button type="button" id="gcancel">Cancel</button>
+        <button type="button" id="gforget" hidden>Forget saved ID</button>
       </div>
     </form>
   </div>
@@ -1405,11 +1408,12 @@ function requestToken(clientId, interactive) {
           MAIL.token = resp.access_token;
           loadToday();
         } else {
-          setMailStatus('Google didn’t return access.', true);
+          setMailStatus('Google didn’t return access. If the client ID is wrong, use Change client ID.', true);
         }
       },
       error_callback: (err) => {
-        setMailStatus('Sign-in was closed or refused' + (err && err.type ? ` (${err.type}).` : '.'), true);
+        setMailStatus('Sign-in didn’t complete' + (err && err.type ? ` (${err.type}). ` : '. ')
+          + 'A wrong client ID or a missing origin does this — use Change client ID.', true);
       },
     });
     client.requestAccessToken({ prompt: interactive ? 'consent' : '' });
@@ -1417,10 +1421,22 @@ function requestToken(clientId, interactive) {
 }
 
 function connectGmail() {
-  const saved = params.get('gmail_client_id') || store.get(CLIENT_ID_KEY);
+  // An id passed in the URL replaces whatever is saved, so ?gmail_client_id= is itself a reset
+  const fromUrl = (params.get('gmail_client_id') || '').trim();
+  if (fromUrl) store.set(CLIENT_ID_KEY, fromUrl);
+  const saved = fromUrl || store.get(CLIENT_ID_KEY).trim();
   if (!saved) { openClientSheet(); return; }
   setMailStatus('Opening Google sign-in…');
   requestToken(saved, !MAIL.account);
+}
+
+function forgetClientId() {
+  store.del(CLIENT_ID_KEY);
+  sheetInput.value = '';
+  sheet.hidden = true;
+  setMailStatus('Saved client ID cleared. Choose Connect Gmail to enter a new one.');
+  updateMailButtons();
+  mailConnectBtn.focus({ preventScroll: true });
 }
 
 function disconnectGmail() {
@@ -1444,6 +1460,7 @@ const mailStatusEl = $('mailstatus');
 const mailConnectBtn = $('mailconnect');
 const mailRefreshBtn = $('mailrefresh');
 const mailDisconnectBtn = $('maildisconnect');
+const mailClientIdBtn = $('mailclientid');
 const mailSr = $('mailsr');
 const mailSrList = $('mailsrlist');
 const mailSrRead = $('mailsrread');
@@ -1456,6 +1473,7 @@ function updateMailButtons() {
   mailConnectBtn.textContent = live ? 'Reconnect' : 'Connect Gmail';
   mailRefreshBtn.hidden = !live;
   mailDisconnectBtn.hidden = !live;
+  mailClientIdBtn.hidden = !store.get(CLIENT_ID_KEY);   // the only way back from a wrong ID
   mailStatusEl.textContent = MAIL.status;
   mailStatusEl.classList.toggle('bad', MAIL.error);
 }
@@ -1502,7 +1520,9 @@ function setMailMode(on) {
 function openClientSheet() {
   sheet.hidden = false;
   sheetInput.value = store.get(CLIENT_ID_KEY);
+  $('gforget').hidden = !store.get(CLIENT_ID_KEY);
   sheetInput.focus();
+  sheetInput.select();
 }
 function closeClientSheet() {
   sheet.hidden = true;
@@ -1518,6 +1538,8 @@ function initMail() {
   mailConnectBtn.addEventListener('click', connectGmail);
   mailRefreshBtn.addEventListener('click', () => { if (MAIL.token) loadToday(); else connectGmail(); });
   mailDisconnectBtn.addEventListener('click', disconnectGmail);
+  mailClientIdBtn.addEventListener('click', openClientSheet);
+  $('gforget').addEventListener('click', forgetClientId);
 
   sheetForm.addEventListener('submit', (e) => {
     e.preventDefault();
