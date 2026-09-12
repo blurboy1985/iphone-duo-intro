@@ -143,14 +143,19 @@ both displays work, and the page still makes no network requests until the viewe
 
 - `.github/workflows/pages.yml` deploys on every push to `main`, and on demand via `workflow_dispatch`.
 - It copies `index.html` alone into `_site`, so `PLAN.md` and the workflow itself are not published.
-- `actions/configure-pages@v5` runs with `enablement: true`, so the workflow switches Pages on itself
-  rather than needing a click in Settings. `pages: write` and `id-token: write` are granted for that.
 - `concurrency: pages` with `cancel-in-progress: false` lets a running publish finish.
 
-**Open question — repository visibility.** The repo is private. GitHub Pages serves private repos only
-on Pro, Team or Enterprise; on the free plan the repo has to be public first. Either way the published
-site itself is world-readable (per-site access control is Enterprise Cloud only). The first workflow run
-settles which case applies.
+**Pages has to be switched on by hand, once.** The first two runs both died at
+`Create Pages site failed: Resource not accessible by integration`. `actions/configure-pages` was
+being asked to enable Pages itself via `enablement: true`, and it cannot: `GITHUB_TOKEN`'s
+`pages: write` covers *deploying to* an existing site, but *creating* one needs repo admin, which
+`GITHUB_TOKEN` never has. `enablement: true` has been removed, and the switch-on is a one-time
+Settings -> Pages -> Build and deployment -> Source: GitHub Actions.
+
+**Repository visibility.** Made public on 2026-09-12. That was needed for Pages on a free plan
+(Pages serves private repos only on Pro, Team or Enterprise) but it was *not* the cause of the two
+failures above — the same error occurred after the repo went public. Either way the published site
+is world-readable; per-site access control is Enterprise Cloud only.
 
 **Note for the Gmail feature.** Pages serves over https, so Google Identity Services will run there,
 unlike `file://`. Connecting needs `https://blurboy1985.github.io` added to the OAuth client's

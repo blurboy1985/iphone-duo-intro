@@ -26,10 +26,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure Pages
-        # enablement turns Pages on for the repo, so this needs no click in Settings
+        # Pages must already be switched on for this repo, with its source set to
+        # GitHub Actions (Settings -> Pages -> Build and deployment -> Source).
+        # configure-pages cannot do that first-time switch-on itself: GITHUB_TOKEN's
+        # `pages: write` allows deploying to an existing site, but creating one needs
+        # repo admin, which GITHUB_TOKEN does not have. Asking it to (`enablement: true`)
+        # just fails with "Create Pages site failed: Resource not accessible by
+        # integration", whatever the repository's visibility.
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Assemble the site
         # The page is one self-contained file; PLAN.md and the workflow stay unpublished
