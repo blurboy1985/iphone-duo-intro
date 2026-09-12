@@ -75,3 +75,64 @@ Progress:
 - Repo: `blurboy1985/iphone-duo-intro`. Private, no GitHub Pages (the user's choices). Branch `main`.
 - Commits `index.html` and `PLAN.md`.
 - Verify: the remote exists and is private, remote `main` matches the local HEAD, and both files are listed on the remote.
+
+## Mail on the screens (2026-09-12)
+**Task:** show today's Google mail on the phone's own displays, and open a message by clicking it, in three.js.
+
+**Done =** the inbox is drawn on the 3D screens (not over them), a click on a message opens it,
+both displays work, and the page still makes no network requests until the viewer asks it to.
+
+### How it works
+- The list and the reader are painted into the existing screen canvases, so they arrive as the
+  screens' emissive textures. Nothing is overlaid in HTML.
+- A click is a `THREE.Raycaster` cast at the three screen meshes. The hit's `uv` maps straight to a
+  texture pixel, because `panelGeo` already normalises each panel's UVs (the inner display's two
+  halves take `[0, 0, .5, 1]` and `[.5, 0, 1, 1]` of one 2048 × 1465 canvas). Each painter records
+  its tappable rows into `scr.hits`, and the pixel is tested against those.
+- Panels are `FrontSide`, so a screen facing away is never picked. The inner pair is additionally
+  ignored past 50% fold, when the two halves have shut on each other.
+- A touch that lands on glass scrolls or taps; a touch anywhere else still turns the phone. Under
+  12 texture px of travel counts as a tap, more counts as a scroll, with momentum and a wheel path.
+
+### Layout
+- **Inner 7.6"** — a split view that uses the fold: the day's messages down the left half, the open
+  message on the right, with the crease as the divider.
+- **Outer 5.4"** — the same inbox one pane at a time, with a back chevron. Its hinge-side margin is
+  wider (106 px vs 52) because the hinge barrel stands proud of this display and shaves that edge
+  when the phone is shut.
+- Opening mail pushes the camera in (`view.mailOpenDist` / `mailClosedDist`), stops the idle float
+  so type stays sharp and taps land, and fades the title out. Closing it eases back.
+- On a portrait viewport a 1.4:1 landscape display cannot be legible, so mail opens folded, on the
+  cover display — the way you would really read it. Unfold is still one tap away.
+
+### Data
+- Default is a **clearly labelled sample inbox** ("Sample inbox" on screen and in the dock), dated to
+  today. This keeps the offline promise: still zero network requests on load.
+- **Connect Gmail** is opt-in. It loads Google Identity Services on click, asks for
+  `gmail.readonly`, and lists `in:inbox after:<local midnight epoch>`, newest first, up to 15.
+  Bodies prefer `text/plain` and fall back to stripped `text/html`.
+- The viewer supplies their own OAuth **Web application** client ID (a sheet, or `?gmail_client_id=`).
+  Only that ID is stored, in `localStorage`. The access token is held in memory for the tab and is
+  revoked on Disconnect. Nothing is sent anywhere but Google.
+
+### Accessibility
+- A visually hidden mirror (`#mailsr`) lists the messages as real buttons and carries the open
+  message's text, so the inbox is reachable without pointing at a 3D surface. Escape closes a message.
+
+### Verify
+- Headless Chromium, `file://`, every http/https request aborted. Requests were the document alone in
+  every run; console and page errors clean throughout.
+- Raycast picking proved end to end: hover until the canvas cursor turns to a pointer, click, then
+  read the opened message back out of the a11y mirror. Works on the inner list and on the cover
+  display, and the cover's back chevron closes the message.
+- A drag over the list scrolls without opening a different message; a drag off the glass still turns
+  the phone; wheel scrolls the pane under the cursor.
+- Star White repaints the mail UI in its palette. Replay closes mail and restores the film.
+- 390 × 844: opens folded, cover display legible, no horizontal overflow.
+- Intro regression at t = 2.6, 6, 9.6, 11.8 and 16.5 — unchanged, console clean.
+- `?mail=1` opens straight into the inbox (for review and screenshots).
+
+### Notes
+- The sample inbox is fictional and labelled as such; no real mail is committed to this repo.
+- `accounts.google.com` and `gmail.googleapis.com` appear only as strings inside the script. The page
+  still has no external `src`, `href`, `url()` or `@import`.
