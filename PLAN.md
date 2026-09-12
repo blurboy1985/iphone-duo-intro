@@ -179,3 +179,21 @@ surface as a generic GIS error.
 appears, the sheet prefills and selects it, Forget clears storage and re-hides the button, Connect
 then reopens the sheet, submitting saves the new ID, and a URL param replaces a stored one. Full
 mail and intro regressions re-run clean.
+
+## Client ID validation (2026-09-12)
+**Why:** a bad client ID surfaces only as Google's bare `401: invalid_client` page, which says
+nothing about what was actually pasted.
+
+**Fix:** `clientIdProblem()` checks the value before any sign-in is launched, and names the specific
+mistake — a `GOCSPX-` client secret, an `AIza` API key, an embedded space, a missing
+`.apps.googleusercontent.com` suffix, or a shape that is not
+`123456789012-abc.apps.googleusercontent.com`. The message appears inline in the sheet rather than
+in the dock. A quoted paste has its surrounding quotes stripped. Advising rotation on a pasted
+secret is deliberate: it should not have been typed into a page at all.
+
+**Verify:** five bad inputs each produce their specific message, leave the sheet open and store
+nothing; a well-formed id is accepted and stored; a quoted paste is cleaned.
+
+**Field note.** Both failure modes were hit for real, in order: `401: invalid_client` (the ID was not
+a real web client), then `400: origin_mismatch` (ID good, origin not registered). They are distinct,
+and the second is the better sign. README documents both.
