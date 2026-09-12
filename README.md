@@ -85,6 +85,9 @@ address you are viewing from is not registered on that client. Fix it in
 https://blurboy1985.github.io
 ```
 
+The **Connect Gmail** box prints this page's own origin with a Copy button, so
+paste that rather than typing it — it is exactly the string Google will be sent.
+
 Three things go wrong here:
 
 - It must go under **Authorized JavaScript origins**, *not* Authorized redirect
@@ -96,6 +99,17 @@ Three things go wrong here:
 
 To run it from a local server as well, add that origin too, e.g.
 `http://localhost:8000`.
+
+If it still fails after adding the origin, check in this order:
+
+1. **Wait.** Google's own note says a change can take five minutes to a few hours.
+2. **Same client?** Open the client in Google Cloud and compare its Client ID,
+   character for character, against the one in **Change client ID**. Adding the
+   origin to a different client than the page is using looks identical from here.
+3. **Right box?** Origins and redirect URIs sit next to each other. Only
+   **Authorized JavaScript origins** matters for this flow.
+4. **Same origin?** Compare what the box prints against what is registered. A
+   local copy, a preview deployment or a custom domain is a different origin.
 
 ### Pasted the wrong client ID?
 

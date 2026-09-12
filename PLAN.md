@@ -197,3 +197,15 @@ nothing; a well-formed id is accepted and stored; a quoted paste is cleaned.
 **Field note.** Both failure modes were hit for real, in order: `401: invalid_client` (the ID was not
 a real web client), then `400: origin_mismatch` (ID good, origin not registered). They are distinct,
 and the second is the better sign. README documents both.
+
+## Origin readout (2026-09-12)
+**Why:** `400: origin_mismatch` persisted after the right-looking origin was registered, and nothing
+on the page showed which origin it was actually sending. Transcribing it by hand is the weak point.
+
+**Fix:** the connect sheet prints `location.origin` with a Copy button, so the registered value can
+be pasted rather than typed. A `file://` page says plainly that sign-in cannot work there, and hides
+the copy button. The sign-in failure text now quotes the origin too.
+
+**Verify:** over http the real origin is printed and copyable, and the copy button falls back to
+selecting the text when the clipboard API is unavailable rather than throwing; from `file://` the box
+flags itself and hides the button.
